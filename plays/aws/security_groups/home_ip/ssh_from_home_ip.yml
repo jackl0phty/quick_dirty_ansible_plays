@@ -1,0 +1,44 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    region: us-east-1
+    route_prefix: /32
+  tasks:
+    - command: curl --silent --fail http://checkip.amazonaws.com/
+      register: external_ip
+    - set_fact: routable_ip="{{external_ip.stdout}}{{ route_prefix }}"
+
+    # Create AWS Security group Allow SSH From Home Ip.
+    - name: Create AWS Security Group SSH from Home Ip.
+      local_action:
+        module: ec2_group
+        name: "{{ item.sg_name }}"
+        region: "{{ region }}"
+        name: ssh_port_22_home
+        description: SSH From Home Ip
+        state: present
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{ routable_ip }}"
+        rules_egress:
+          - proto: all
+            cidr_ip: 0.0.0.0/0
+      register: aws_sg
+
+    # Add Tags to Security Group Allow SSH From Home Ip.
+    - name: Tag Security Group SSH From Home Ip
+      local_action:
+        module: ec2_tag
+        resource: "{{aws_sg.group_id}}"
+        region: "{{ region }}"
+        state: present
+        tags:
+          Name: SSH_port_22_home
+          env: prod
+          proto: SSH
+          port: 22
+          created_by: Ansible

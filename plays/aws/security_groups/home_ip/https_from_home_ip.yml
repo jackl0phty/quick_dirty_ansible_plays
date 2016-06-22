@@ -1,0 +1,44 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    region: us-east-1
+    route_prefix: /32
+  tasks:
+    - command: curl --silent --fail http://checkip.amazonaws.com/
+      register: external_ip
+    - set_fact: routable_ip="{{external_ip.stdout}}{{ route_prefix }}"
+
+    # Create AWS Security group Allow HTTPS From Home Ip.
+    - name: Create AWS Security Group HTTPS from Home Ip.
+      local_action:
+        module: ec2_group
+        name: "{{ item.sg_name }}"
+        region: "{{ region }}"
+        name: https_port_443_home
+        description: HTTPS From Home Ip
+        state: present
+        rules:
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: "{{ routable_ip }}"
+        rules_egress:
+          - proto: all
+            cidr_ip: 0.0.0.0/0
+      register: aws_sg
+
+    # Add Tags to Security Group Allow HTTPS From Home Ip.
+    - name: Tag security group https from home Ip
+      local_action:
+        module: ec2_tag
+        resource: "{{aws_sg.group_id}}"
+        region: "{{ region }}"
+        state: present
+        tags:
+          Name: HTTPS_port_443_home
+          env: prod
+          proto: HTTPS
+          port: 443
+          created_by: Ansible
