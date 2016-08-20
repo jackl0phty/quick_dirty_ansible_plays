@@ -1,0 +1,30 @@
+---
+- hosts: all
+
+  gather_facts: yes
+  connection: ssh
+  vars:
+    src_dir: '/home/pi'
+    user: 'pi'
+    group: 'pi'
+
+  tasks:
+  - name: Save {{ src_dir }}/uboot
+    stat: path={{ src_dir }}/uboot
+    register: uboot_dir
+ 
+  - name: Save {{ src_dir }}/rpi-tools
+    stat: path={{ src_dir }}/rpi-tools
+    register: rpitools_dir
+
+  - name: Clone Rpi U-boot repo
+    git: repo=git://git.denx.de/u-boot.git  dest={{ src_dir }}/uboot update=no
+    when: uboot_dir.stat.exists == False
+    become: yes
+    become_user: root
+
+  - name: Clone Rpi Tools
+    git: repo=git://github.com/raspberrypi/tools  dest={{ src_dir }}/rpi-tools update=no
+    when: rpitools_dir.stat.exists == False
+    become: yes
+    become_user: root

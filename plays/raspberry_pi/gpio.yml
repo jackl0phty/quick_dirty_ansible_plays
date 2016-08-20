@@ -1,0 +1,49 @@
+---
+- hosts: all
+
+  gather_facts: yes
+  connection: ssh
+  vars:
+    download_dir: '/home/pi'
+    user: 'pi'
+    group: 'pi'
+    pigpio_download_extension: 'zip'
+    pigpio_download_url: "http://abyz.co.uk/rpi/pigpio/pigpio"
+
+  tasks:
+  - name: Download the PIGPIO pi library.
+    get_url: url={{ pigpio_download_url }}.{{ pigpio_download_extension }} dest={{ download_dir }}/pigpio.{{ pigpio_download_extension }}
+
+  - name: Save location of src so we can run make.
+    stat: path={{ download_dir }}/PIGPIO
+    register: src_dir
+
+  - name: Uncompress PIGPIO download.
+    unarchive: src={{ download_dir}}/pigpio.{{ pigpio_download_extension }} dest=/{{ download_dir }} copy=no
+    when: src_dir.stat.exists == False
+
+  - name: Save locaiton of compiled binary.
+    stat: path={{ download_dir }}/PIGPIO/pigpiod
+    register: compiled_bin
+
+  - name: Run make to compile source.
+    shell: make chdir={{ download_dir }}/PIGPIO
+    when: compiled_bin.stat.exists == False
+    
+  - name: Install the PIGPIO library.
+    shell: make install chdir={{ download_dir }}/PIGPIO
+    when: compiled_bin.stat.exists == False   
+    become: yes
+    become_user: root
+
+  - name: Figure out if pigpiod daemon is running.
+    shell: ps aux |grep pigpiod |egrep -v grep |awk '{ print $11 }';
+    register: daemon_running
+
+  - name: Start the pigpiod daemon.
+    shell: pigpiod
+    become: yes
+    become_user: root
+
+  - name: Add pigpiod to rc.local.
+    template: src=../../templates/rclocal.j2 dest=/etc/rc.local owner=root group=root mode=0744 
