@@ -47,3 +47,11 @@
 
   - name: Add pigpiod to rc.local.
     template: src=../../templates/rclocal.j2 dest=/etc/rc.local owner=root group=root mode=0744 
+
+  - name: Same if python3 for pigpio is enabled or not.
+    shell: ls /usr/local/lib/python3.2/dist-packages/pigpio-1.32.egg-info |awk -F"/" '{ print $7 }' |awk -F"-" '{ print $3 }' |grep info 
+    register: pigpio_py3_enable
+
+  - name: Enable pigpio library for python3.
+    shell: python3 setup.py install chdir={{ download_dir }}/PIGPIO
+    when: pigpio_py3_enable == 'info'
