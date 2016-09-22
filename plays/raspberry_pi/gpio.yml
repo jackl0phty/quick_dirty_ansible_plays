@@ -34,7 +34,6 @@
     shell: make install chdir={{ download_dir }}/PIGPIO
     when: compiled_bin.stat.exists == False   
     become: yes
-    become_user: root
 
   - name: Figure out if pigpiod daemon is running.
     shell: ps aux |grep pigpiod |egrep -v grep |awk '{ print $11 }';
@@ -43,7 +42,6 @@
   - name: Start the pigpiod daemon.
     shell: pigpiod
     become: yes
-    become_user: root
 
   - name: Add pigpiod to rc.local.
     template: src=../../templates/rclocal.j2 dest=/etc/rc.local owner=root group=root mode=0744 
@@ -55,3 +53,18 @@
   - name: Enable pigpio library for python3.
     shell: python3 setup.py install chdir={{ download_dir }}/PIGPIO
     when: pigpio_py3_enable == 'info'
+
+  - name: Install packages required for Adafruit Python DHT library for Debian based distros.
+    apt: pkg={{item}} update_cache=no
+    with_items:
+    - build-essential
+    - python-dev
+    become: yes
+    when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+  - name: Clone Adafruit Python DHT library.
+    git: repo=https://github.com/adafruit/Adafruit_Python_DHT.git dest={{ download_dir }}/Adafruit_Python_DHT 
+
+  - name: Install Adafruit Python DHT library.
+    shell: python setup.py install chdir={{ download_dir }}/Adafruit_Python_DHT
+    become: yes 

@@ -21,3 +21,4 @@ Vagrantfile
 .chruby-version
 vendor/bundle
 .kitchen/
+*.retry
