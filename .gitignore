@@ -22,3 +22,4 @@ Vagrantfile
 vendor/bundle
 .kitchen/
 *.retry
+vault.yml
